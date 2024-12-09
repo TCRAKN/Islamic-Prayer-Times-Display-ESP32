@@ -1,0 +1,483 @@
+// ESP32 code to get json data from www.muwaqqit.com, and parse into a current day prayer list
+// Many thanks to the developer at www.muwaqqit.com for making the API available.
+// Muwaqqit contact -  contact@muwaqqit.com
+// Please consider supporting Muwaqqit - https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=contact@muwaqqit.com&currency_code=GBP
+//
+// Benoit's ArduinoJson library is invaluable, and of course makes this project possible and with ease.
+// The ArduinoJson Assistant takes out the headache of writing 'filter' code!
+// Please consider supporting Benoit - https://github.com/sponsors/bblanchon
+
+// Prints to TTGO T-Display TFT screen and serial monitor
+// Arduino IDE Board - TTGO LoRa32.OLED or ESP32 Dev Module - Default settings
+// Alternatively, you may use any ESP32 board to push information out to the serial port only
+// and remove all commands relating to the TFT.
+
+#include <WiFi.h>          // WiFi library for ESP32 V1.2.7
+#include <HTTPClient.h>    // HTTP client for API requests
+#include <ArduinoJson.h>   // JSON parsing library V7.2.1
+#include <time.h>          // For NTP Time V1.6.1
+#include <TFT_eSPI.h>      // Include TFT_eSPI library V2.5.43
+#include <WifiLocation.h>  // Include WifiLocation to get Ge0location via Google V1.2.9
+#include <WiFiManager.h>   // Include the WiFiManager library V2.0.17
+
+// Initialize WiFiManager
+WiFiManager wifiManager;
+
+const char* googleApiKey = "Insert your Google Maps API Key here";
+WifiLocation location(googleApiKey);
+
+// Initialize the TFT_eSPI display
+TFT_eSPI tft = TFT_eSPI();
+#define BACKLIGHT_PIN 4  // Backlight pin for TTGO T-Display
+
+String payload = "{}";
+char datetoday[11];
+char displaydatetoday[30];
+char timeStr[64];
+char timenow[10];
+const char* fajr_2 = "";
+const char* sunrise_2 = "";
+const char* dhur_2 = "";
+const char* asr_2 = "";
+const char* asr2_2 = "";
+const char* maghrib_2 = "";
+const char* isha_2 = "";
+
+unsigned long fajrSeconds = 0;
+unsigned long sunriseSeconds = 0;
+unsigned long dhurSeconds = 0;
+unsigned long asrSeconds = 0;
+unsigned long asr2Seconds = 0;
+unsigned long maghribSeconds = 0;
+unsigned long ishaSeconds = 0;
+unsigned long timenowSeconds = 0;
+
+unsigned long previousMillis = 0;      // Stores the last time an action was performed
+const unsigned long interval = 60000;  // Interval before entering Deep_Sleep - 60 seconds
+
+#define uS_TO_S_FACTOR 1000000ULL /* Conversion factor for micro seconds to seconds */
+#define TIME_TO_SLEEP 3600        /* Time ESP32 will go to sleep for... (in seconds) */
+
+//#define ADC_PIN as the ADC for battery monitoring
+#define ADC_PIN 34
+const float fullVoltage = 4.2;  // Full battery voltage in volts
+
+#define TRIGGER_PIN 35
+#define WAKEUP_PIN GPIO_NUM_0  // USE GPIO pin 0 as button to Wakeup
+
+// API endpoint
+const char* api_url = "";
+const char* api_url1 = "https://www.muwaqqit.com/api.json?d=";
+const char* api_url2 = ";lt=";
+const char* api_url3 = "&ln=";
+const char* api_url4 = ";fa=-18;era=-12&ea=-13&tztype=auto&tz=";
+
+// NTP server and timezone
+const char* ntp_server = "pool.ntp.org";
+const long gmt_offset_sec = 0;         // Adjust if necessary for your timezone
+const int daylight_offset_sec = 3600;  // Adjust for daylight savings
+
+// Function to synchronize time with NTP server
+void syncTime() {
+  configTime(gmt_offset_sec, daylight_offset_sec, ntp_server);
+  Serial.println("Synchronizing time with NTP server...");
+  tft.println("Syncing Time");
+  struct tm timeinfo;
+  while (!getLocalTime(&timeinfo)) {
+    Serial.println("Failed to obtain time, retrying...");
+    delay(1000);
+  }
+  Serial.println("Time synchronized!");
+  tft.println("Time Sync'ed");
+}
+
+// Fetch JSON data
+String fetchJSON() {
+  payload.reserve(70000);  // Reserve adequate space for JSON data
+  payload = "{}";
+
+  if (WiFi.status() == WL_CONNECTED) {
+    WiFiClientSecure client;
+    client.setInsecure();  // disable SSL certificate validation
+    HTTPClient http;
+
+    tft.println("Getting GeoLocation");
+    location_t loc = location.getGeoFromWiFi();  // data structure to hold results
+    Serial.println("Location: " + String(loc.lat, 7) + "," + String(loc.lon, 7));
+
+    if (loc.lat == 0 || loc.lon == 0) {
+      ESP.restart();
+    }
+    tft.println("GeoLocation Received");
+
+    // Concatenate all parts
+    String full_url = String(api_url1) + datetoday + api_url2 + String(loc.lat, 7) + api_url3 + String(loc.lon, 7) + api_url4;
+
+    // Convert the result back to a const char*
+    api_url = full_url.c_str();
+    Serial.println(api_url);  // Display the final api_url
+    tft.println("Getting Prayer Data");
+
+    http.begin(api_url);
+    http.useHTTP10(true);  // // Downgrade to HTTP 1.0 to prevent chunked transfer encoding
+    int httpCode = http.GET();
+    if (httpCode > 0) {
+      if (httpCode == HTTP_CODE_OK) {
+        payload = http.getString();
+        tft.println("Prayer Data Received");
+
+        JsonDocument filter;
+        JsonObject filter_list_0 = filter["list"].add<JsonObject>();
+        filter_list_0["fajr_date"] = true;
+        filter_list_0["fajr_time"] = true;
+        filter_list_0["sunrise_time"] = true;
+        filter_list_0["zohr_time"] = true;
+        filter_list_0["mithl_time"] = true;
+        filter_list_0["mithlain_time"] = true;
+        filter_list_0["sunset_time"] = true;
+        filter_list_0["esha_time"] = true;                    // Isha 12 Degrees
+        //        filter_list_0["esha_red_time"] = true;      // Isha 12 Degrees
+
+        JsonDocument doc;
+
+        DeserializationError err =
+          deserializeJson(doc, payload, DeserializationOption::Filter(filter));
+
+        if (err) {
+          Serial.print("deserializeJson() returned ");
+          Serial.println(err.c_str());
+          return "";
+        }
+
+        for (JsonObject list_item : doc["list"].as<JsonArray>()) {
+          const char* fajr_date = list_item["fajr_date"];
+          const char* fajr = list_item["fajr_time"];
+          const char* dhur = list_item["zohr_time"];
+          const char* asr = list_item["mithl_time"];
+          const char* asr2 = list_item["mithlain_time"];
+          const char* maghrib = list_item["sunset_time"];
+          // const char* isha     = list_item["esha_red_time"];  // Isha 12 Degrees
+          const char* isha = list_item["esha_time"];             // Isha 13 Degrees
+          const char* sunrise = list_item["sunrise_time"];
+
+          int resultdate = strcmp(fajr_date, datetoday);
+
+          if (resultdate == 0) {
+            Serial.println(displaydatetoday);
+            Serial.print("Fajr      - ");
+            Serial.println(fajr);
+            Serial.print("Sunrise   - ");
+            Serial.println(sunrise);
+            Serial.print("Dhur      - ");
+            Serial.println(dhur);
+            Serial.print("Asr S/M   - ");
+            Serial.println(asr);
+            Serial.print("Asr H     - ");
+            Serial.println(asr2);
+            Serial.print("Maghrib   - ");
+            Serial.println(maghrib);
+            Serial.print("Isha -13° - ");
+            Serial.println(isha);
+            Serial.println();
+
+            fajr_2 = fajr;
+            sunrise_2 = sunrise;
+            dhur_2 = dhur;
+            asr_2 = asr;
+            asr2_2 = asr2;
+            maghrib_2 = maghrib;
+            isha_2 = isha;
+
+            fajrSeconds = timeToSeconds(fajr_2);
+            sunriseSeconds = timeToSeconds(sunrise_2);
+            dhurSeconds = timeToSeconds(dhur_2);
+            asrSeconds = timeToSeconds(asr_2);
+            asr2Seconds = timeToSeconds(asr2_2);
+            maghribSeconds = timeToSeconds(maghrib_2);
+            ishaSeconds = timeToSeconds(isha_2);
+            timenowSeconds = timeToSeconds(timenow);
+
+            // Display results on TTGO T-Display
+            tft.fillScreen(TFT_BLACK);                // Clear screen
+            tft.setTextColor(TFT_YELLOW, TFT_BLACK);  // Text and background colours
+            tft.setTextSize(1);
+            tft.setCursor(5, 0);
+            tft.println(displaydatetoday);
+            batteryV();
+            tft.setTextSize(2);
+
+            //Fajr TFT coordinates
+            tft.setCursor(5, 12);
+            // Check if timenow is between Fajr and Sunrise
+            if (timenowSeconds >= fajrSeconds && timenowSeconds <= sunriseSeconds) {
+              tft.setTextColor(TFT_BLUE, TFT_YELLOW);  // Text and background colours
+              tft.printf("Fajr     %s\n", fajr);
+            } else {
+              tft.setTextColor(TFT_YELLOW, TFT_BLACK);  // Text and background colours
+              tft.printf("Fajr     %s\n", fajr);
+            }
+
+            //Sunrise TFT coordinates
+            tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+            tft.setCursor(5, 30);
+            tft.printf("Sunrise  %s\n", sunrise);
+
+            //Dhur TFT coordinates
+            tft.setCursor(5, 48);
+            // Check if timenow is between Dhur and Asr
+            if (timenowSeconds >= dhurSeconds && timenowSeconds <= asrSeconds) {
+              tft.setTextColor(TFT_BLUE, TFT_YELLOW);  // Text and background colours
+              tft.printf("Dhur     %s\n", dhur);
+            } else {
+              tft.setTextColor(TFT_YELLOW, TFT_BLACK);  // Text and background colours
+              tft.printf("Dhur     %s\n", dhur);
+            }
+
+            //Asr TFT coordinates
+            tft.setCursor(5, 66);
+            // Check if timenow is between Asr (Shafi'i) and 30 minutes before Maghrib
+            if (timenowSeconds >= asrSeconds && timenowSeconds <= (maghribSeconds - 1800)) {
+              tft.setTextColor(TFT_BLUE, TFT_YELLOW);  // Text and background colours
+              tft.printf("Asr S/M  %s\n", asr);
+            } else {
+              tft.setTextColor(TFT_YELLOW, TFT_BLACK);  // Text and background colours
+              tft.printf("Asr S/M  %s\n", asr);
+            }
+
+            //Asr2 TFT coordinates
+            tft.setCursor(5, 84);
+            // Check if timenow is between Asr (Hanafi/Maliki) and Maghrib
+            if (timenowSeconds >= asr2Seconds && timenowSeconds <= maghribSeconds) {
+              tft.setTextColor(TFT_BLUE, TFT_YELLOW);  // Text and background colours
+              tft.printf("Asr H    %s\n", asr2);
+            } else {
+              tft.setTextColor(TFT_YELLOW, TFT_BLACK);  // Text and background colours
+              tft.printf("Asr H    %s\n", asr2);
+            }
+
+            //Maghrib TFT coordinates
+            tft.setCursor(5, 102);
+            // Check if timenow is between Asr and Maghrib
+            if (timenowSeconds >= maghribSeconds && timenowSeconds <= ishaSeconds) {
+              tft.setTextColor(TFT_BLUE, TFT_YELLOW);  // Text and background colours
+              tft.printf("Maghrib  %s\n", maghrib);
+            } else {
+              tft.setTextColor(TFT_YELLOW, TFT_BLACK);  // Text and background colours
+              tft.printf("Maghrib  %s\n", maghrib);
+            }
+
+            //Isha TFT coordinates
+            tft.setCursor(5, 120);
+            // Check if timenow is between Isha and Fajr
+            if (timenowSeconds >= ishaSeconds || timenowSeconds <= fajrSeconds) {
+              tft.setTextColor(TFT_BLUE, TFT_YELLOW);  // Text and background colours
+              tft.printf("Isha -13 %s\n", isha);
+            } else {
+              tft.setTextColor(TFT_YELLOW, TFT_BLACK);  // Text and background colours
+              tft.printf("Isha -13 %s\n", isha);
+            }
+          }
+          http.end();
+        }
+      }
+    } else {
+      Serial.printf("HTTP request failed: %s\n", http.errorToString(httpCode).c_str());
+      ESP.restart();
+    }
+    http.end();
+  }
+  return "";
+}
+
+// Function to convert time string HH:MM:SS to total seconds since midnight
+unsigned long timeToSeconds(const char* timeStr) {
+  unsigned long seconds = 0;
+  seconds += (timeStr[0] - '0') * 10 * 3600;  // HH tens place
+  seconds += (timeStr[1] - '0') * 3600;       // HH units place
+  seconds += (timeStr[3] - '0') * 10 * 60;    // MM tens place
+  seconds += (timeStr[4] - '0') * 60;         // MM units place
+  seconds += (timeStr[6] - '0') * 10;         // SS tens place
+  seconds += (timeStr[7] - '0');              // SS units place
+  return seconds;
+}
+
+void drawflag() {
+  tft.fillScreen(TFT_BLACK);
+  // Define colors
+  uint16_t black = TFT_BLACK;
+  uint16_t white = TFT_WHITE;
+  uint16_t green = TFT_GREEN;
+  uint16_t red = TFT_RED;                                                       // Draw the three horizontal stripes
+  tft.fillRect(0, 0, tft.width(), tft.height() / 3, black);                     // Top stripe (black)
+  tft.fillRect(0, tft.height() / 3, tft.width(), tft.height() / 3, white);      // Middle stripe (white)
+  tft.fillRect(0, 2 * tft.height() / 3, tft.width(), tft.height() / 3, green);  // Bottom stripe (green)
+  // Draw the red triangle
+  tft.fillTriangle(0, 0, 0, tft.height(), tft.width() / 3, tft.height() / 2, red);  // Red triangle
+
+  delay(3000);
+}
+
+void batteryV() {
+  // Read Battery voltage and display on TFT / Serial monitor
+  int adcValue = analogRead(ADC_PIN);
+  float batteryVoltage = (adcValue / 4095.0) * 2.0 * 3.3 * (1100 / 1000.0);
+  int batteryPercentage = (batteryVoltage / fullVoltage) * 100;
+  tft.setCursor(185, 0);
+  tft.print(String(batteryPercentage) + "%  ");
+}
+
+// Function to print local time
+void printLocalTime() {
+  struct tm timeinfo;
+  if (getLocalTime(&timeinfo)) {
+    strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+    strftime(datetoday, sizeof(datetoday), "%Y-%m-%d", &timeinfo);
+    strftime(displaydatetoday, sizeof(displaydatetoday), "%a %d %h %Y %H:%M:%S", &timeinfo);
+    strftime(timenow, sizeof(timenow), "%H:%M:%S", &timeinfo);
+  } else {
+    Serial.println("Failed to get local time.");
+    ESP.restart();
+  }
+}
+
+void checkButton() {
+  // check for button press
+  if (digitalRead(TRIGGER_PIN) == LOW) {
+    // poor mans debounce/press-hold, code not ideal for production
+    delay(50);
+    if (digitalRead(TRIGGER_PIN) == LOW) {
+      Serial.println("Button Pressed");
+      // still holding button for 3000 ms, reset settings, code not ideaa for production
+      delay(3000);  // reset delay hold
+      if (digitalRead(TRIGGER_PIN) == LOW) {
+        Serial.println("Button Held");
+        Serial.println("Erasing Config, restarting");
+        wifiManager.resetSettings();
+        ESP.restart();
+      }
+    }
+  }
+}
+
+void print_wakeup_reason() {
+  esp_sleep_wakeup_cause_t wakeup_reason;
+
+  wakeup_reason = esp_sleep_get_wakeup_cause();
+
+  switch (wakeup_reason) {
+    case ESP_SLEEP_WAKEUP_EXT0: Serial.println("Wakeup caused by external signal using RTC_IO"); break;
+    case ESP_SLEEP_WAKEUP_EXT1: Serial.println("Wakeup caused by external signal using RTC_CNTL"); break;
+    case ESP_SLEEP_WAKEUP_TIMER: Serial.println("Wakeup caused by timer"); break;
+    case ESP_SLEEP_WAKEUP_TOUCHPAD: Serial.println("Wakeup caused by touchpad"); break;
+    case ESP_SLEEP_WAKEUP_ULP: Serial.println("Wakeup caused by ULP program"); break;
+    default: Serial.printf("Wakeup was not caused by deep sleep: %d\n", wakeup_reason); break;
+  }
+}
+
+void setup() {
+  wifiManager.setConfigPortalTimeout(60);  // auto close configportal after 60 seconds
+
+  tft.init();                      // Initialize the display
+  tft.setRotation(1);              // Set orientation (landscape)
+  tft.fillScreen(TFT_BLACK);       // Clear screen
+  pinMode(BACKLIGHT_PIN, OUTPUT);  // Set backlight pin as output
+  analogWrite(BACKLIGHT_PIN, 64);  // Set initial brightness (0-255)
+
+  pinMode(TRIGGER_PIN, INPUT);
+  pinMode(WAKEUP_PIN, INPUT_PULLUP);
+  esp_sleep_enable_ext0_wakeup(WAKEUP_PIN, 0); // Wake up when button is pressed (LOW)
+
+  Serial.begin(115200);  // Initialize Serial for debugging
+
+  //Print the wakeup reason for ESP32
+  print_wakeup_reason();
+
+  // Flush the content of the serial port buffer
+  while (Serial.available() > 0)
+    Serial.read();
+
+  drawflag();
+
+  tft.fillScreen(TFT_YELLOW);  // Fill screen Yellow
+  tft.setTextSize(2);
+  tft.setCursor(0, 5);
+  tft.setTextColor(TFT_BLUE, TFT_YELLOW);
+  tft.println(" Connecting to WiFi");
+  tft.setCursor(7, 45);
+  tft.print(" To configure WiFi");
+  tft.setCursor(20, 65);
+  tft.println("Connect 'Phone to");
+  tft.setTextColor(TFT_RED, TFT_YELLOW);
+  tft.setCursor(60, 90);
+  tft.println("MUWAQQIT-AP");
+  tft.setTextColor(TFT_BLUE, TFT_YELLOW);
+
+  Serial.println("Connecting to WiFi");
+
+  // Optional: Reset saved settings (useful during development)
+  // wifiManager.resetSettings();
+
+  // Automatically connect to the last known network
+  // or set up an Access Point for configuration
+  wifiManager.autoConnect("MUWAQQIT-AP");
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Can't Establish WiFi Connection - Going into Deep-Sleep");
+    tft.fillScreen(TFT_BLACK);  // Fill screen Black
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    tft.setTextSize(2);
+    tft.setCursor(0, 40);
+    tft.println("  No WiFi Available");
+    tft.setCursor(0, 65);
+    tft.println("     Deep-Sleep");
+    delay(3000);
+    drawflag();
+    esp_deep_sleep_start();
+  }
+
+  // If you reach here, you're connected to WiFi
+  tft.fillScreen(TFT_BLACK);  // Clear screen
+  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+  tft.setCursor(0, 5);
+  tft.println("WiFi Connected!");
+  Serial.println("WiFi Connected!");
+
+  // Synchronize time with NTP server
+  syncTime();
+  printLocalTime();
+  Serial.print("Current Local Time: ");
+  Serial.println(timeStr);
+  Serial.println();
+  fetchJSON();
+
+  tft.setTextSize(1);
+  previousMillis = millis();  // Initialize previousMillis in setup
+}
+
+void loop() {
+  // Get the current time
+  unsigned long currentMillis = millis();
+  // Check if 60 seconds have passed
+  if (currentMillis - previousMillis >= interval) {
+    // Save the last time an action was performed
+    previousMillis = currentMillis;
+   
+    drawflag();
+
+    tft.fillScreen(TFT_BLACK);      // Clear screen
+    analogWrite(BACKLIGHT_PIN, 0);  // Set  brightness to 0. i.e. Backlight off
+
+    // Put the ESP32 into deep sleep mode for 60 minutes
+    esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);  // 60 Minutes
+    Serial.flush();
+    esp_deep_sleep_start();
+  }
+
+  // Update Time & Battery % on TFT and check for button press - until Deep Sleep activated
+  printLocalTime();
+  tft.setCursor(5, 0);
+  tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+  tft.println(displaydatetoday);
+  batteryV();
+  checkButton();
+}
