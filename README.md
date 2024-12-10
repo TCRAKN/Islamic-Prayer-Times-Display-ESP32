@@ -4,6 +4,8 @@ This is an Arduino IDE project that uses a readily-available development board t
 screen - LilyGo TTGO T-Display - to retrieve and display Islamic prayer time data according to the 
 geolocation of the user.
 
+Follow my Instructable here:  https://www.instructables.com/Islamic-Prayer-Times-ESP32-TTGO-T-Display/
+
 The project uses JSON data from https://muwaqqit.com for prayer time data and Google for Geolocation.
 
 The project uses a readily-available ESP32 development board that includes a small TFT screen - TTGO T-Display,
