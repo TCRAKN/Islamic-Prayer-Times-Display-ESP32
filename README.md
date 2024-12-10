@@ -15,14 +15,11 @@ https://www.printables.com/model/817468-ttgo-t-display-cases/files
 
 Arduino IDE Board - TTGO LoRa32.OLED or ESP32 Dev Module - Default settings
 
-TFT-eSPI Library - Ensure that the User_Setup.h file is correctly configured for the ST7789 driver.
-Uncomment line containing - #define ST7789_DRIVER
-Edit lines defining height & width - 
-#define TFT_WIDTH  128
-#define TFT_HEIGHT 160
-Edit the following to:
-#define TFT_BL   4
-#define TFT_BACKLIGHT_ON HIGH
+TFT-eSPI Library - Ensure that the User_Setup_Select.h file is correctly configured for the TTGO T-Display ST7789 driver.
+Comment out the line as below:
+//#include <User_Setup.h>                          // Default setup is root library folder
+Uncomment line as below:
+#include <User_Setups/Setup25_TTGO_T_Display.h>    // Setup file for ESP32 and TTGO T-Display ST7789V SPI bus TFT
 
 Many thanks to the developer at www.muwaqqit.com for making the API available.
 Muwaqqit contact -  contact@muwaqqit.com
