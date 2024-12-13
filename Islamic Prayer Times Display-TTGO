@@ -124,6 +124,10 @@ String fetchJSON() {
     if (httpCode > 0) {
       if (httpCode == HTTP_CODE_OK) {
         payload = http.getString();
+        if (payload == "429 TOO MANY REQUESTS") {
+          tft.println("Too Many Requests");
+          ESP.restart();
+        }
         tft.println("Prayer Data Received");
 
         JsonDocument filter;
