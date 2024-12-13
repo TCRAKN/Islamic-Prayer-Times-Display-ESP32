@@ -126,6 +126,7 @@ String fetchJSON() {
         payload = http.getString();
         if (payload == "429 TOO MANY REQUESTS") {
           tft.println("Too Many Requests");
+          Serial.println("Too Many Requests - From Muwaqqit - Restarting...");
           ESP.restart();
         }
         tft.println("Prayer Data Received");
