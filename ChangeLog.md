@@ -50,3 +50,6 @@ Auto-wakeup after 30 minutes.
 
 9 Dec 2024 -
 1. Added Button on GPIO 0 as Wake-up button during Deep-Sleep
+
+13 Dec 2024 - 
+1. Added trap to detect "TOO MANY REQUESTS" from Muwaqqit and to restart device.
