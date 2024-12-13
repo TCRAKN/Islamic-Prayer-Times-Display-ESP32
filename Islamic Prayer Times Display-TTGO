@@ -146,6 +146,7 @@ String fetchJSON() {
         if (err) {
           Serial.print("deserializeJson() returned ");
           Serial.println(err.c_str());
+          ESP.restart();
           return "";
         }
 
