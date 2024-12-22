@@ -72,6 +72,9 @@ const char* api_url2 = ";lt=";
 const char* api_url3 = "&ln=";
 const char* api_url4 = ";fa=-18;era=-12&ea=-13&tztype=auto&tz=";
 
+String timezoneTZ = "{}";
+String timezone = "[]";
+
 // NTP server and timezone
 const char* ntp_server = "pool.ntp.org";
 const long gmt_offset_sec = 0;         // Adjust if necessary for your timezone
@@ -88,14 +91,12 @@ void syncTime() {
     delay(1000);
   }
   Serial.println("Time synchronized!");
-  tft.println("Time Sync'ed");
 }
 
 // Fetch JSON data
 String fetchJSON() {
   payload.reserve(70000);  // Reserve adequate space for JSON data
   payload = "{}";
-
   if (WiFi.status() == WL_CONNECTED) {
     WiFiClientSecure client;
     client.setInsecure();  // disable SSL certificate validation
@@ -110,8 +111,10 @@ String fetchJSON() {
     }
     tft.println("GeoLocation Received");
 
+    getTZ(loc.lat, loc.lon);
+    
     // Concatenate all parts
-    String full_url = String(api_url1) + datetoday + api_url2 + String(loc.lat, 7) + api_url3 + String(loc.lon, 7) + api_url4;
+    String full_url = String(api_url1) + datetoday + api_url2 + String(loc.lat, 7) + api_url3 + String(loc.lon, 7) + api_url4 + timezone;
 
     // Convert the result back to a const char*
     api_url = full_url.c_str();
@@ -305,6 +308,35 @@ unsigned long timeToSeconds(const char* timeStr) {
   seconds += (timeStr[6] - '0') * 10;         // SS tens place
   seconds += (timeStr[7] - '0');              // SS units place
   return seconds;
+}
+// Function to determine Timezone, DST Offset and UTC Offset
+void getTZ(float latTZ, float lonTZ) {
+  const char* apiUrlTZ = "https://maps.googleapis.com/maps/api/timezone/json";
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    String urlTZ = String(apiUrlTZ) + "?location=" + String(latTZ, 7) + "," + String(lonTZ, 7) + "&timestamp=" + String(time(NULL)) + "&key=" + googleApiKey;
+    http.begin(urlTZ);
+    int httpCode = http.GET();
+
+    if (httpCode > 0) {
+      String payload = http.getString();
+      Serial.println(payload);
+
+      JsonDocument doc;
+      deserializeJson(doc, payload);
+
+      String timezoneTZ = doc["timeZoneId"];
+      timezone=timezoneTZ;
+      int gmt_offset_sec = doc["rawOffset"];
+      int daylight_offset_sec = doc["dstOffset"];
+      syncTime();
+      tft.println("Time Sync'ed");
+    } else {
+      Serial.println("Error on HTTP request");
+      ESP.restart();
+    }
+    http.end();
+  }
 }
 
 void drawflag() {
