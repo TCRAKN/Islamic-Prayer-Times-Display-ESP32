@@ -53,3 +53,6 @@ Auto-wakeup after 30 minutes.
 
 13 Dec 2024 - 
 1. Added trap to detect "TOO MANY REQUESTS" from Muwaqqit and to restart device.
+
+21 Dec 2024 -
+1. Added function [getTZ()] to automatically determine Timezone, DST Offset and UTC Offset via Google Maps Timezone API
