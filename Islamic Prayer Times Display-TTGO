@@ -361,7 +361,12 @@ void batteryV() {
   float batteryVoltage = (adcValue / 4095.0) * 2.0 * 3.3 * (1100 / 1000.0);
   int batteryPercentage = (batteryVoltage / fullVoltage) * 100;
   tft.setCursor(185, 0);
-  tft.print(String(batteryPercentage) + "%  ");
+  if (batteryPercentage < 100){
+  tft.print(String(batteryPercentage) + "%     ");
+}
+else {
+  tft.print( "Charging");
+}
 }
 
 // Function to print local time
