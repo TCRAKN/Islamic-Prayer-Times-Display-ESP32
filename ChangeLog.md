@@ -56,3 +56,9 @@ Auto-wakeup after 30 minutes.
 
 21 Dec 2024 -
 1. Added function [getTZ()] to automatically determine Timezone, DST Offset and UTC Offset via Google Maps Timezone API
+
+23 Dec 2024 - 
+1. Added test for battery charging and to display "Charging" on TFT.  Otherwise, display battery %.
+
+24 Dec 2024
+1. Display location address to confirm to user that prayer times are accurate.
