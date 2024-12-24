@@ -111,6 +111,7 @@ String fetchJSON() {
     }
     tft.println("GeoLocation Received");
 
+    // Get Timezone, DST and UTC offset from Google
     getTZ(loc.lat, loc.lon);
     
     // Concatenate all parts
@@ -133,6 +134,9 @@ String fetchJSON() {
           ESP.restart();
         }
         tft.println("Prayer Data Received");
+
+        // Get location address from Google API
+        getAddress(loc.lat, loc.lon);
 
         JsonDocument filter;
         JsonObject filter_list_0 = filter["list"].add<JsonObject>();
@@ -331,6 +335,82 @@ void getTZ(float latTZ, float lonTZ) {
       int daylight_offset_sec = doc["dstOffset"];
       syncTime();
       tft.println("Time Sync'ed");
+    } else {
+      Serial.println("Error on HTTP request");
+      ESP.restart();
+    }
+    http.end();
+  }
+}
+
+// Function to determine and display Address from Lat/Long
+void getAddress(float latTZ, float lonTZ) {
+
+  const char* apiUrlAdd = "https://maps.googleapis.com/maps/api/geocode/json?";
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    String urlAdd = String(apiUrlAdd) + "latlng=" + String(latTZ, 7) + "," + String(lonTZ, 7) + "&key=" + googleApiKey;
+    http.begin(urlAdd);
+    int httpCode = http.GET();
+
+    if (httpCode > 0) {
+      String payload = http.getString();
+
+      JsonDocument filter;
+
+      JsonObject filter_results_0_address_components_0 = filter["results"][0]["address_components"].add<JsonObject>();
+      filter_results_0_address_components_0["short_name"] = true;
+
+      JsonDocument doc;
+      DeserializationError error = deserializeJson(doc, payload, DeserializationOption::Filter(filter));
+
+      if (error) {
+        Serial.print("deserializeJson() failed: ");
+        Serial.println(error.c_str());
+        ESP.restart();
+        return;
+      }
+
+      JsonArray results = doc["results"];
+      JsonArray results_0_address_components = results[0]["address_components"];
+      Serial.println();
+      const char* housenumber = results_0_address_components[0]["short_name"];  // number
+      Serial.print(housenumber);
+      Serial.print(" ");
+      const char* streetname = results_0_address_components[1]["short_name"];  // route (Road)
+      Serial.println(streetname);
+      const char* townname = results_0_address_components[2]["short_name"];  // postal_town - e.g. London
+      Serial.println(townname);
+      const char* countyname = results_0_address_components[3]["short_name"];  // "political"  (County) - e.g. Wiltshire
+      Serial.println(countyname);
+      const char* postalcode = results_0_address_components[6]["short_name"];  // postal_code
+      Serial.println(postalcode);
+      const char* countryname1 = results_0_address_components[4]["short_name"];  // "political"  (Country) - e.g. England
+      Serial.print(countryname1);
+      Serial.print(" - ");
+      const char* countryname2 = results_0_address_components[5]["short_name"];  // "country" - e.g. GB
+      Serial.println(countryname2);
+      Serial.println();
+
+      // Send Location Address to TFT
+      tft.fillScreen(TFT_YELLOW);  // Fill screen Yellow
+      tft.setTextSize(2);
+      tft.setCursor(7, 5);
+      tft.setTextColor(TFT_RED, TFT_YELLOW);
+      tft.println("You are at, or near");
+      tft.setCursor(20, 35);
+      tft.setTextColor(TFT_BLUE, TFT_YELLOW);
+      tft.print(housenumber);
+      tft.print(" ");
+      tft.println(streetname);
+      tft.setCursor(20, 55);
+      tft.println(townname);
+      tft.setCursor(20, 75);
+      tft.println(postalcode);
+      tft.setCursor(20, 95);
+      tft.println(countryname1);
+      delay(7000);
+
     } else {
       Serial.println("Error on HTTP request");
       ESP.restart();
