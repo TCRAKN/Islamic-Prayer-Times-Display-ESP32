@@ -45,8 +45,8 @@ If any stage fails, the device will restart.
 After prayer time data has been retrieved, it will be displayed on the TFT screen and pushed out to the serial port.
 The device will be set to deep-sleep mode after 60 seconds.  The device will restart after 60 minutes.
 
-To force display of prayer times, press the Reset button.
+To force display of prayer times, press the bottom right-hand button to wake up the device.
 
-To clear the saved WiFi network, press and hold the right-hand button for 3 seconds after prayer times are displayed.
+To clear the saved WiFi network, press and hold the top right-hand button for 3 seconds after prayer times are displayed.
 The device will restart.  The previously saved network will be erased and the device will return to WiFi the
 WiFi configuration screen and the portal will be enabled to complete WiFi network setup.
