@@ -12,7 +12,7 @@
 // Alternatively, you may use any ESP32 board to push information out to the serial port only
 // and remove all commands relating to the TFT.
 
-// V7.00
+// V7.10
 
 #include <WiFi.h>          // WiFi library for ESP32 V1.2.7
 #include <HTTPClient.h>    // HTTP client for API requests
@@ -21,6 +21,7 @@
 #include <TFT_eSPI.h>      // Include TFT_eSPI library V2.5.43
 #include <WifiLocation.h>  // Include WifiLocation to get Ge0location via Google V1.2.9
 #include <WiFiManager.h>   // Include the WiFiManager library V2.0.17
+#include <Battery18650Stats.h>   // Battery Stats library V1.0.0
 
 // Initialize WiFiManager
 WiFiManager wifiManager;
@@ -62,7 +63,9 @@ const unsigned long interval = 60000;  // Interval before entering Deep_Sleep - 
 
 //#define ADC_PIN as the ADC for battery monitoring
 #define ADC_PIN 34
-const float fullVoltage = 4.2;  // Full battery voltage in volts
+
+// Initialise Battery18650Stats library
+Battery18650Stats battery(ADC_PIN, 1.775);
 
 #define TRIGGER_PIN 35
 #define WAKEUP_PIN GPIO_NUM_0  // USE GPIO pin 0 as button to Wakeup
@@ -439,12 +442,9 @@ void drawflag() {
 
 void batteryV() {
   // Read Battery voltage and display on TFT / Serial monitor
-  int adcValue = analogRead(ADC_PIN);
-  float batteryVoltage = (adcValue / 4095.0) * 2.0 * 3.3 * (1100 / 1000.0);
-  int batteryPercentage = (batteryVoltage / fullVoltage) * 100;
   tft.setCursor(185, 0);
-  if (batteryPercentage < 100){
-  tft.print(String(batteryPercentage) + "%     ");
+  if (battery.getBatteryVolts() < 4.5) {
+    tft.print(String(battery.getBatteryChargeLevel()) + "%     ");
 }
 else {
   tft.print( "Charging");
@@ -569,8 +569,8 @@ void setup() {
   tft.fillScreen(TFT_BLACK);  // Clear screen
   tft.setTextColor(TFT_YELLOW, TFT_BLACK);
   tft.setCursor(0, 5);
-  tft.println("WiFi Connected V7.00");
-  Serial.println("WiFi Connected - V7.00");
+  tft.println("WiFi Connected V7.10");
+  Serial.println("WiFi Connected - V7.10");
 
   // Synchronize time with NTP server
   syncTime();
