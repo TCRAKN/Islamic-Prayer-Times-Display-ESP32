@@ -12,6 +12,8 @@
 // Alternatively, you may use any ESP32 board to push information out to the serial port only
 // and remove all commands relating to the TFT.
 
+// V7.00
+
 #include <WiFi.h>          // WiFi library for ESP32 V1.2.7
 #include <HTTPClient.h>    // HTTP client for API requests
 #include <ArduinoJson.h>   // JSON parsing library V7.2.1
@@ -555,6 +557,11 @@ void setup() {
     tft.println("     Deep-Sleep");
     delay(3000);
     drawflag();
+
+    tft.writecommand(ST7789_DISPOFF);  // Switch off the display
+    tft.writecommand(ST7789_SLPIN);    // Sleep the display driver
+    delay(120);
+
     esp_deep_sleep_start();
   }
 
@@ -562,8 +569,8 @@ void setup() {
   tft.fillScreen(TFT_BLACK);  // Clear screen
   tft.setTextColor(TFT_YELLOW, TFT_BLACK);
   tft.setCursor(0, 5);
-  tft.println("WiFi Connected!");
-  Serial.println("WiFi Connected!");
+  tft.println("WiFi Connected V7.00");
+  Serial.println("WiFi Connected - V7.00");
 
   // Synchronize time with NTP server
   syncTime();
@@ -593,6 +600,11 @@ void loop() {
     // Put the ESP32 into deep sleep mode for 60 minutes
     esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);  // 60 Minutes
     Serial.flush();
+
+    tft.writecommand(ST7789_DISPOFF);  // Switch off the display
+    tft.writecommand(ST7789_SLPIN);    // Sleep the display driver
+    delay(120);
+
     esp_deep_sleep_start();
   }
 
