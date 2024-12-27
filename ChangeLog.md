@@ -65,3 +65,6 @@ Auto-wakeup after 30 minutes.
 
 27 Dec 2024 - V7.00
 1. TFT display now enters Low Power mode before ESP32 enters Deep Sleep mode.
+
+27 Dec 2024 - V7.10
+1. Incorporated Battery18650Stats library for accurate battery monitoring
