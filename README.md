@@ -42,11 +42,15 @@ Some visual feedback is provided, indicating WiFi status, Time sync from NNTP se
 and of course, retrieval of Prayer times data.
 If any stage fails, the device will restart.
 
-After prayer time data has been retrieved, it will be displayed on the TFT screen and pushed out to the serial port.
-The device will be set to deep-sleep mode after 60 seconds.  The device will restart after 60 minutes.
+Firstly, a rough address of the current location will be displayed for 3.5 seconds.
 
-To force display of prayer times, press the bottom right-hand button to wake up the device.
+Secondly, A map image showing the current location.
+    Zoom in/out with the top and bottom buttons
+    Both buttons pressed together will toggle between Road/ and Satellite view
+    If none of the buttons are pressed for 30 secs, the display moves on to show the prayer timetable
 
-To clear the saved WiFi network, press and hold the top right-hand button for 3 seconds after prayer times are displayed.
-The device will restart.  The previously saved network will be erased and the device will return to WiFi the
-WiFi configuration screen and the portal will be enabled to complete WiFi network setup.
+Finally, The prayer timetable is shown along with the current date, time and battery status.
+   If there is no button interaction for 30 seconds, the device switches off and enters Deep-Sleep mode.  
+   Press and hold top button for 3 seconds to enable the WiFi config portal to reset WiFi credentials and/or to update the firmware over the air with a compiled .bin file.  Connect as instructed on screen.
+
+To Wake up the device press the bottom right-hand button.
