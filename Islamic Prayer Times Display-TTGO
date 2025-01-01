@@ -1,8 +1,10 @@
+Muwaqqit for GitHub
+
 // ESP32 code to get json data from www.muwaqqit.com, and parse into a current day prayer list
 // Many thanks to the developer at www.muwaqqit.com for making the API available.
 // Muwaqqit contact -  contact@muwaqqit.com
 // Please consider supporting Muwaqqit - https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=contact@muwaqqit.com&currency_code=GBP
-//
+//sleep
 // Benoit's ArduinoJson library is invaluable, and of course makes this project possible and with ease.
 // The ArduinoJson Assistant takes out the headache of writing 'filter' code!
 // Please consider supporting Benoit - https://github.com/sponsors/bblanchon
@@ -12,26 +14,53 @@
 // Alternatively, you may use any ESP32 board to push information out to the serial port only
 // and remove all commands relating to the TFT.
 
-// V7.10
+// ------------------------------------------------------------------------------------------
+// Sketch Operation:
+//
+// Address screen - No interaction. Stays on screen for 3.5 seconds
 
-#include <WiFi.h>                // WiFi library for ESP32 V1.2.7
-#include <HTTPClient.h>          // HTTP client for API requests
-#include <ArduinoJson.h>         // JSON parsing library V7.2.1
-#include <time.h>                // For NTP Time V1.6.1
-#include <TFT_eSPI.h>            // Include TFT_eSPI library V2.5.43
-#include <WifiLocation.h>        // Include WifiLocation to get Ge0location via Google V1.2.9
-#include <WiFiManager.h>         // Include the WiFiManager library V2.0.17
-#include <Battery18650Stats.h>   // Battery Stats library V1.0.0
+// Map Image Screen
+//    Zoom in/out with top and bottom buttons
+//    Both buttons together changes map type (Road/Satellite)
+//    No buttons pressed for 30 secs, screen moves on to timetable
+
+// Timetable
+//   No button interaction after 30 seconds, device switches off.  Wake up with bottom button.
+//   Press and hold top button for 3 seconds - device goes into WiFi config and Firmware Update mode.
+//    Connect via phone as instructed on screen.
+//   Device enters Deep-Sleep until bottom button is pressed to wake-up.
+// ------------------------------------------------------------------------------------------
+
+#include <WiFi.h>               // WiFi library for ESP32 V1.2.7
+#include <HTTPClient.h>         // HTTP client for API requests
+#include <ArduinoJson.h>        // JSON parsing library V7.2.1
+#include <time.h>               // For NTP Time V1.6.1
+#include <TFT_eSPI.h>           // Include TFT_eSPI library V2.5.43
+#include <WifiLocation.h>       // Include WifiLocation to get Ge0location via Google V1.2.9
+#include <WiFiManager.h>        // Include the WiFiManager library V2.0.17
+#include <Battery18650Stats.h>  // Battery Stats library V1.0.0
+#include <TJpg_Decoder.h>       // Jpeg Decoder Library V1.1.0
+#include <SPIFFS.h>
 
 // Initialize WiFiManager
 WiFiManager wifiManager;
 
-const char* googleApiKey = "Insert your Google Maps API Key here";
+const char* googleApiKey = "Your Google Maps API Key here";
+const char* staticmapapiurl = "https://maps.googleapis.com/maps/api/staticmap";
+const char* savePath = "/staticmap.jpg";  //Filename stored in SPIFFS when image received from Google
+
 WifiLocation location(googleApiKey);
+float lat = 0;
+float lon = 0;
+
+extern TJpg_Decoder TJpegDec;  // Proper instantiation of the TJpg_Decoder object
 
 // Initialize the TFT_eSPI display
 TFT_eSPI tft = TFT_eSPI();
 #define BACKLIGHT_PIN 4  // Backlight pin for TTGO T-Display
+
+int mapzoom = 18;            // base zoom level for Google Static Map image
+String maptype = "roadmap";  // Base Map type - flip between "roadmap" and "hybrid"
 
 String payload = "{}";
 char datetoday[11];
@@ -56,7 +85,8 @@ unsigned long ishaSeconds = 0;
 unsigned long timenowSeconds = 0;
 
 unsigned long previousMillis = 0;      // Stores the last time an action was performed
-const unsigned long interval = 60000;  // Interval before entering Deep_Sleep - 60 seconds
+unsigned long currentMillis = millis();
+const unsigned long interval = 30000;  // Interval before entering Deep_Sleep - 30 seconds
 
 #define uS_TO_S_FACTOR 1000000ULL /* Conversion factor for micro seconds to seconds */
 #define TIME_TO_SLEEP 3600        /* Time ESP32 will go to sleep for... (in seconds) */
@@ -85,6 +115,26 @@ const char* ntp_server = "pool.ntp.org";
 const long gmt_offset_sec = 0;         // Adjust if necessary for your timezone
 const int daylight_offset_sec = 3600;  // Adjust for daylight savings
 
+// Callback function for TJpg_Decoder
+bool tftOutput(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
+  tft.pushImage(x, y, w, h, bitmap);
+  return 1;
+}
+
+void formatspiffs() {
+  // Format SPIFFS
+  if (!SPIFFS.begin(true)) {
+    Serial.println("Failed to mount file system, formatting...");
+    SPIFFS.format();  // Format SPIFFS if it fails to mount
+    if (!SPIFFS.begin()) {
+      Serial.println("Failed to mount file system after formatting");
+      return;
+    }
+  } else {
+    Serial.println("File system mounted");
+  }
+}
+
 // Function to synchronize time with NTP server
 void syncTime() {
   configTime(gmt_offset_sec, daylight_offset_sec, ntp_server);
@@ -96,12 +146,14 @@ void syncTime() {
     delay(1000);
   }
   Serial.println("Time synchronized!");
+  //  tft.println("Time Sync'ed");
 }
 
 // Fetch JSON data
 String fetchJSON() {
   payload.reserve(70000);  // Reserve adequate space for JSON data
   payload = "{}";
+
   if (WiFi.status() == WL_CONNECTED) {
     WiFiClientSecure client;
     client.setInsecure();  // disable SSL certificate validation
@@ -110,6 +162,8 @@ String fetchJSON() {
     tft.println("Getting GeoLocation");
     location_t loc = location.getGeoFromWiFi();  // data structure to hold results
     Serial.println("Location: " + String(loc.lat, 7) + "," + String(loc.lon, 7));
+    lat = loc.lat;
+    lon = loc.lon;
 
     if (loc.lat == 0 || loc.lon == 0) {
       ESP.restart();
@@ -118,13 +172,14 @@ String fetchJSON() {
 
     // Get Timezone, DST and UTC offset from Google
     getTZ(loc.lat, loc.lon);
-    
+    //Serial.println("Timezone1: " + timezone);
+
     // Concatenate all parts
     String full_url = String(api_url1) + datetoday + api_url2 + String(loc.lat, 7) + api_url3 + String(loc.lon, 7) + api_url4 + timezone;
 
     // Convert the result back to a const char*
     api_url = full_url.c_str();
-    Serial.println(api_url);  // Display the final api_url
+    //Serial.println(api_url);  // Display the final api_url
     tft.println("Getting Prayer Data");
 
     http.begin(api_url);
@@ -143,6 +198,10 @@ String fetchJSON() {
         // Get location address from Google API
         getAddress(loc.lat, loc.lon);
 
+        fetchAndSaveMap(loc.lat, loc.lon);
+
+        checkButtons();
+
         JsonDocument filter;
         JsonObject filter_list_0 = filter["list"].add<JsonObject>();
         filter_list_0["fajr_date"] = true;
@@ -152,13 +211,12 @@ String fetchJSON() {
         filter_list_0["mithl_time"] = true;
         filter_list_0["mithlain_time"] = true;
         filter_list_0["sunset_time"] = true;
-        filter_list_0["esha_time"] = true;                    // Isha 12 Degrees
-        //        filter_list_0["esha_red_time"] = true;      // Isha 12 Degrees
+        filter_list_0["esha_time"] = true;
+        //        filter_list_0["esha_red_time"] = true;
 
         JsonDocument doc;
 
-        DeserializationError err =
-          deserializeJson(doc, payload, DeserializationOption::Filter(filter));
+        DeserializationError err = deserializeJson(doc, payload, DeserializationOption::Filter(filter));
 
         if (err) {
           Serial.print("deserializeJson() returned ");
@@ -174,8 +232,8 @@ String fetchJSON() {
           const char* asr = list_item["mithl_time"];
           const char* asr2 = list_item["mithlain_time"];
           const char* maghrib = list_item["sunset_time"];
-          // const char* isha     = list_item["esha_red_time"];  // Isha 12 Degrees
-          const char* isha = list_item["esha_time"];             // Isha 13 Degrees
+          // const char* isha     = list_item["esha_red_time"];
+          const char* isha = list_item["esha_time"];
           const char* sunrise = list_item["sunrise_time"];
 
           int resultdate = strcmp(fajr_date, datetoday);
@@ -214,7 +272,7 @@ String fetchJSON() {
             maghribSeconds = timeToSeconds(maghrib_2);
             ishaSeconds = timeToSeconds(isha_2);
             timenowSeconds = timeToSeconds(timenow);
-
+       
             // Display results on TTGO T-Display
             tft.fillScreen(TFT_BLACK);                // Clear screen
             tft.setTextColor(TFT_YELLOW, TFT_BLACK);  // Text and background colours
@@ -318,26 +376,29 @@ unsigned long timeToSeconds(const char* timeStr) {
   seconds += (timeStr[7] - '0');              // SS units place
   return seconds;
 }
-// Function to determine Timezone, DST Offset and UTC Offset
+
+// Function to determine Timezone, DST and UTC Offset
 void getTZ(float latTZ, float lonTZ) {
+
   const char* apiUrlTZ = "https://maps.googleapis.com/maps/api/timezone/json";
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
     String urlTZ = String(apiUrlTZ) + "?location=" + String(latTZ, 7) + "," + String(lonTZ, 7) + "&timestamp=" + String(time(NULL)) + "&key=" + googleApiKey;
+    // Serial.println(urlTZ);
     http.begin(urlTZ);
     int httpCode = http.GET();
 
     if (httpCode > 0) {
       String payload = http.getString();
-      Serial.println(payload);
 
       JsonDocument doc;
       deserializeJson(doc, payload);
 
       String timezoneTZ = doc["timeZoneId"];
-      timezone=timezoneTZ;
+      timezone = timezoneTZ;
       int gmt_offset_sec = doc["rawOffset"];
       int daylight_offset_sec = doc["dstOffset"];
+
       syncTime();
       tft.println("Time Sync'ed");
     } else {
@@ -348,25 +409,28 @@ void getTZ(float latTZ, float lonTZ) {
   }
 }
 
-// Function to determine and display Address from Lat/Long
+// Function to determine Address from Lat/Long
 void getAddress(float latTZ, float lonTZ) {
 
   const char* apiUrlAdd = "https://maps.googleapis.com/maps/api/geocode/json?";
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
     String urlAdd = String(apiUrlAdd) + "latlng=" + String(latTZ, 7) + "," + String(lonTZ, 7) + "&key=" + googleApiKey;
+    //Serial.println(urlAdd);
     http.begin(urlAdd);
     int httpCode = http.GET();
 
     if (httpCode > 0) {
       String payload = http.getString();
 
+      // ****deserialize here*****
       JsonDocument filter;
 
       JsonObject filter_results_0_address_components_0 = filter["results"][0]["address_components"].add<JsonObject>();
       filter_results_0_address_components_0["short_name"] = true;
 
       JsonDocument doc;
+
       DeserializationError error = deserializeJson(doc, payload, DeserializationOption::Filter(filter));
 
       if (error) {
@@ -378,7 +442,9 @@ void getAddress(float latTZ, float lonTZ) {
 
       JsonArray results = doc["results"];
       JsonArray results_0_address_components = results[0]["address_components"];
+
       Serial.println();
+      // Send Location Address to Serial
       const char* housenumber = results_0_address_components[0]["short_name"];  // number
       Serial.print(housenumber);
       Serial.print(" ");
@@ -386,10 +452,10 @@ void getAddress(float latTZ, float lonTZ) {
       Serial.println(streetname);
       const char* townname = results_0_address_components[2]["short_name"];  // postal_town - e.g. London
       Serial.println(townname);
-      const char* countyname = results_0_address_components[3]["short_name"];  // "political"  (County) - e.g. Wiltshire
-      Serial.println(countyname);
       const char* postalcode = results_0_address_components[6]["short_name"];  // postal_code
       Serial.println(postalcode);
+      const char* countyname = results_0_address_components[3]["short_name"];  // "political"  (County) - e.g. Wiltshire
+      Serial.println(countyname);
       const char* countryname1 = results_0_address_components[4]["short_name"];  // "political"  (Country) - e.g. England
       Serial.print(countryname1);
       Serial.print(" - ");
@@ -414,7 +480,7 @@ void getAddress(float latTZ, float lonTZ) {
       tft.println(postalcode);
       tft.setCursor(20, 95);
       tft.println(countryname1);
-      delay(7000);
+      delay(3500);
 
     } else {
       Serial.println("Error on HTTP request");
@@ -422,6 +488,66 @@ void getAddress(float latTZ, float lonTZ) {
     }
     http.end();
   }
+}
+
+void fetchAndSaveMap(float latMap, float lonMap) {
+
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;                                                                                                                                                                                                                                                                                                                                                                                                                                      // Update Map API URL
+    String mapurl = String(staticmapapiurl) + "?center=" + String(latMap, 7) + "," + String(lonMap, 7) + "&zoom=" + String(mapzoom) + "&scale=1&maptype=" + maptype + "&size=240x135&format=jpg-baseline&markers=size:tiny%7Ccolor:0xff0000ff%7C" + String(latMap, 7) + "," + String(lonMap, 7) + "&path=geodesic:true%7Ccolor:0xff0000ff%7Cweight:4%7C" + String(latMap, 7) + "," + String(lonMap, 7) + "%7C21.4224779,39.8262775&key=" + googleApiKey;  // Adding a red marker and requesting JPEG format
+    //Serial.println(mapurl);
+    http.begin(mapurl);
+    int httpCode = http.GET();
+
+    if (httpCode == HTTP_CODE_OK) {
+      fs::File file = SPIFFS.open(savePath, "w");
+      if (!file) {
+        Serial.println("Failed to open file for writing");
+      } else {
+        http.writeToStream(&file);
+        file.close();
+        Serial.println("Map image saved to SPIFFS");
+
+        // Verify file size and content
+        file = SPIFFS.open(savePath, "r");
+        if (file) {
+          Serial.printf("File size: %d bytes\n", file.size());
+          Serial.println();
+          file.close();
+          decodeAndDisplayMap();
+        } else {
+          Serial.println("Failed to open file for reading");
+        }
+      }
+    } else {
+      Serial.println("Error on HTTP request");
+    }
+    http.end();
+  }
+}
+
+void decodeAndDisplayMap() {
+  fs::File file = SPIFFS.open(savePath, "r");
+  if (!file) {
+    Serial.println("Failed to open file for reading");
+    return;
+  }
+
+  int fileSize = file.size();
+  uint8_t* buffer = new uint8_t[fileSize];
+  file.read(buffer, fileSize);
+  file.close();
+
+  // Clear screen before displaying image
+  tft.fillScreen(TFT_BLACK);
+  analogWrite(BACKLIGHT_PIN, 150);  // Set  brightness to 100.
+
+  // Display image at origin (0, 0)
+  Serial.printf("Decoding JPEG of size: %d bytes\n", fileSize);
+
+  bool decoded = TJpgDec.drawFsJpg(0, 0, savePath);
+  analogWrite(BACKLIGHT_PIN, 60);  // Set initial brightness to 60 (0-255)
+  delete[] buffer;
 }
 
 void drawflag() {
@@ -436,7 +562,6 @@ void drawflag() {
   tft.fillRect(0, 2 * tft.height() / 3, tft.width(), tft.height() / 3, green);  // Bottom stripe (green)
   // Draw the red triangle
   tft.fillTriangle(0, 0, 0, tft.height(), tft.width() / 3, tft.height() / 2, red);  // Red triangle
-
   delay(3000);
 }
 
@@ -445,13 +570,13 @@ void batteryV() {
   tft.setCursor(185, 0);
   if (battery.getBatteryVolts() < 4.5) {
     tft.print(String(battery.getBatteryChargeLevel()) + "%     ");
-}
-else {
-  tft.print( "Charging");
-}
+  } else {
+    tft.print("Charging");
+  }
 }
 
 // Function to print local time
+// https://cplusplus.com/reference/ctime/strftime/
 void printLocalTime() {
   struct tm timeinfo;
   if (getLocalTime(&timeinfo)) {
@@ -468,17 +593,39 @@ void printLocalTime() {
 void checkButton() {
   // check for button press
   if (digitalRead(TRIGGER_PIN) == LOW) {
-    // poor mans debounce/press-hold, code not ideal for production
-    delay(50);
+    // poor mans debounce/press-hold, code not ideal but works
+    delay(250);
     if (digitalRead(TRIGGER_PIN) == LOW) {
       Serial.println("Button Pressed");
-      // still holding button for 3000 ms, reset settings, code not ideaa for production
+      // still holding button for 3000 ms, reset settings, code not ideal but works
       delay(3000);  // reset delay hold
       if (digitalRead(TRIGGER_PIN) == LOW) {
         Serial.println("Button Held");
-        Serial.println("Erasing Config, restarting");
-        wifiManager.resetSettings();
-        ESP.restart();
+        Serial.println("Entering WiFi Config Portal");
+        tft.fillScreen(TFT_YELLOW);  // Fill screen Yellow
+        tft.setTextSize(2);
+        tft.setCursor(25, 5);
+        tft.setTextColor(TFT_BLUE, TFT_YELLOW);
+        tft.println("To Reset WiFi or");
+        tft.setCursor(30, 25);
+        tft.print("Update Firmware");
+        tft.setCursor(20, 65);
+        tft.println("Connect 'Phone to");
+        tft.setTextColor(TFT_RED, TFT_YELLOW);
+        tft.setCursor(60, 90);
+        tft.println("MUWAQQIT-AP");
+        tft.setTextColor(TFT_BLUE, TFT_YELLOW);
+
+        // Flash TFT 3 times to indicate Config Portal enabled
+        for (int i = 0; i < 3; i++) {
+          tft.writecommand(ST7789_DISPOFF);  // Switch off the display
+          delay(250);
+          tft.writecommand(ST7789_DISPON);  // Switch on the display
+          delay(250);
+        }
+
+        wifiManager.setConfigPortalTimeout(180);  // auto close configportal after 3 minutes
+        wifiManager.startConfigPortal("MUWAQQIT-AP");
       }
     }
   }
@@ -486,7 +633,6 @@ void checkButton() {
 
 void print_wakeup_reason() {
   esp_sleep_wakeup_cause_t wakeup_reason;
-
   wakeup_reason = esp_sleep_get_wakeup_cause();
 
   switch (wakeup_reason) {
@@ -499,23 +645,105 @@ void print_wakeup_reason() {
   }
 }
 
-void setup() {
-  wifiManager.setConfigPortalTimeout(60);  // auto close configportal after 60 seconds
+void checkButtons() {
+  unsigned long mapinterval = 20000;  // 20-second interval
+  unsigned long startTime = millis();
+  bool buttonPressed = false;
+  int debounceDelay = 300;      // Debounce delay to stabilize button presses
+  int lastTriggerState = HIGH;  // Assume buttons are not pressed initially
+  int lastWakeupState = HIGH;
 
-  tft.init();                      // Initialize the display
-  tft.setRotation(1);              // Set orientation (landscape)
-  tft.fillScreen(TFT_BLACK);       // Clear screen
+  while ((millis() - startTime) < mapinterval) {
+    // Read button states
+    int triggerState = digitalRead(TRIGGER_PIN);
+    int wakeupState = digitalRead(WAKEUP_PIN);
+
+    // Check for top button press (Increase Map Zoom Level)
+    if (triggerState == LOW && wakeupState == HIGH) {
+      // poor mans debounce/press-hold, code not ideal for production
+      delay(debounceDelay);
+      if (triggerState == LOW && wakeupState == HIGH) {
+        Serial.println("Top Button Pressed");
+
+        if (mapzoom < 22) {
+          mapzoom = min(mapzoom + 1, 22);
+          startTime = millis();  // Reset interval
+          buttonPressed = true;
+          updateDisplay();
+        }
+      }
+    }
+    // Check for bottom button press (decrease Map Zoom Level)
+    else if (wakeupState == LOW && triggerState == HIGH) {
+      // poor mans debounce/press-hold, code not ideal for production
+      delay(debounceDelay);
+      if (wakeupState == LOW && triggerState == HIGH) {
+        Serial.println("Bottom Button Pressed");
+
+        if (mapzoom > 0) {
+          mapzoom = max(mapzoom - 1, 0);
+          startTime = millis();  // Reset interval
+          buttonPressed = true;
+          updateDisplay();
+        }
+      }
+    }
+
+    // check for both buttons press (Change Map Type)
+    else if (triggerState == LOW && wakeupState == LOW) {
+      // poor mans debounce/press-hold, code not ideal for production
+      delay(debounceDelay);
+      if (triggerState == LOW && wakeupState == LOW) {
+        Serial.println("Both Buttons Pressed");
+        maptype = (maptype == "roadmap") ? "hybrid" : "roadmap";
+        startTime = millis();  // Reset interval
+        buttonPressed = true;
+        updateDisplay();
+      }
+    }
+    // Update the last states
+    lastTriggerState = triggerState;
+    lastWakeupState = wakeupState;
+    delay(100);  // Small delay to debounce buttons
+  }
+
+  if (!buttonPressed) {
+    Serial.println("No button pressed within interval, exiting function.");
+  }
+}
+
+void updateDisplay() {
+  tft.writecommand(ST7789_DISPOFF);
+  delay(250);
+  tft.writecommand(ST7789_DISPON);
+  fetchAndSaveMap(lat, lon);
+  Serial.println("Location: " + String(lat, 7) + "," + String(lon, 7));
+}
+
+void setup() {
+  wifiManager.setConfigPortalTimeout(60);  // auto close config portal after 60 seconds
+
+  tft.init();                 // Initialize the display
+  tft.setRotation(1);         // Set orientation (landscape)
+  tft.fillScreen(TFT_BLACK);  // Clear screen
+  tft.setSwapBytes(true);
   pinMode(BACKLIGHT_PIN, OUTPUT);  // Set backlight pin as output
-  analogWrite(BACKLIGHT_PIN, 64);  // Set initial brightness (0-255)
+  analogWrite(BACKLIGHT_PIN, 60);  // Set initial brightness (0-255)
+
+  // Initialize TJpg_Decoder library
+  TJpgDec.setJpgScale(1);
+  TJpgDec.setCallback(tftOutput);
 
   pinMode(TRIGGER_PIN, INPUT);
   pinMode(WAKEUP_PIN, INPUT_PULLUP);
-  esp_sleep_enable_ext0_wakeup(WAKEUP_PIN, 0); // Wake up when button is pressed (LOW)
+  esp_sleep_enable_ext0_wakeup(WAKEUP_PIN, 0);  // Wake up when button is pressed (LOW)
 
   Serial.begin(115200);  // Initialize Serial for debugging
 
   //Print the wakeup reason for ESP32
   print_wakeup_reason();
+
+  formatspiffs();
 
   // Flush the content of the serial port buffer
   while (Serial.available() > 0)
@@ -539,9 +767,6 @@ void setup() {
 
   Serial.println("Connecting to WiFi");
 
-  // Optional: Reset saved settings (useful during development)
-  // wifiManager.resetSettings();
-
   // Automatically connect to the last known network
   // or set up an Access Point for configuration
   wifiManager.autoConnect("MUWAQQIT-AP");
@@ -558,19 +783,24 @@ void setup() {
     delay(3000);
     drawflag();
 
+    tft.fillScreen(TFT_BLACK);      // Clear screen
+    analogWrite(BACKLIGHT_PIN, 0);  // Set  brightness to 0. i.e. Backlight off
+
+    esp_sleep_enable_ext0_wakeup(WAKEUP_PIN, 0);  // Wake up when button is pressed (LOW)
+
     tft.writecommand(ST7789_DISPOFF);  // Switch off the display
     tft.writecommand(ST7789_SLPIN);    // Sleep the display driver
     delay(120);
 
-    esp_deep_sleep_start();
+    esp_deep_sleep_start();  // Put ESP32 into Deep Sleep mode
   }
 
   // If you reach here, you're connected to WiFi
   tft.fillScreen(TFT_BLACK);  // Clear screen
   tft.setTextColor(TFT_YELLOW, TFT_BLACK);
   tft.setCursor(0, 5);
-  tft.println("WiFi Connected V7.10");
-  Serial.println("WiFi Connected - V7.10");
+  tft.println("WiFi Connected V9.00");
+  Serial.println("WiFi Connected - V9.00");
 
   // Synchronize time with NTP server
   syncTime();
@@ -578,6 +808,7 @@ void setup() {
   Serial.print("Current Local Time: ");
   Serial.println(timeStr);
   Serial.println();
+
   fetchJSON();
 
   tft.setTextSize(1);
@@ -587,31 +818,33 @@ void setup() {
 void loop() {
   // Get the current time
   unsigned long currentMillis = millis();
-  // Check if 60 seconds have passed
+  // Check if 30 seconds have passed
   if (currentMillis - previousMillis >= interval) {
     // Save the last time an action was performed
     previousMillis = currentMillis;
-   
+    // Place the code you want to run after the delay here
+    //Serial.println("60 seconds have passed!");
     drawflag();
 
     tft.fillScreen(TFT_BLACK);      // Clear screen
     analogWrite(BACKLIGHT_PIN, 0);  // Set  brightness to 0. i.e. Backlight off
 
-    // Put the ESP32 into deep sleep mode for 60 minutes
-    esp_sleep_enable_timer_wakeup(TIME_TO_SLEEP * uS_TO_S_FACTOR);  // 60 Minutes
+    // Put the ESP32 into deep sleep mode
+    esp_sleep_enable_ext0_wakeup(WAKEUP_PIN, 0);  // Wake up when button is pressed (LOW)
     Serial.flush();
 
     tft.writecommand(ST7789_DISPOFF);  // Switch off the display
     tft.writecommand(ST7789_SLPIN);    // Sleep the display driver
-    delay(120);
 
-    esp_deep_sleep_start();
+    delay(120);
+    esp_deep_sleep_start();  // Put ESP32 into Deep Sleep mode
   }
 
   // Update Time & Battery % on TFT and check for button press - until Deep Sleep activated
   printLocalTime();
   tft.setCursor(5, 0);
   tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+  tft.setTextSize(1);
   tft.println(displaydatetoday);
   batteryV();
   checkButton();
