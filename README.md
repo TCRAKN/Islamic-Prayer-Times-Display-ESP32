@@ -35,10 +35,10 @@ A WiFi manager is incorporated, eliminating the need to hard-code one's WiFi cre
 If no connection or no SSID defined, the WiFi Configuration Portal is enabled.
 On a mobile device, connect to SSID "Muwaqqit-AP" - You may have to browse to 192.168.4.1
 Select "Configure WiFi"
-Choose WiFi network, enter password and select "Save"
-Configuration portal will close and the device will connect to the chosen WiFi network and continue.
+Choose your WiFi network, enter the password and select "Save"
+The configuration portal will close and the device - if in range - will connect to the chosen WiFi network and continue.
 
-If nothing is configured from the portal within 60 seconds, the device will be set to deep-sleep mode.
+If there is no activity for 60 seconds while connected to the portal, the device will enter deep-sleep mode.
 
 Some visual feedback is provided, indicating WiFi status, Time sync from NNTP server, Geolocation retrieval
 and of course, retrieval of Prayer times data.
@@ -46,13 +46,13 @@ If any stage fails, the device will restart.
 
 Firstly, a rough address of the current location will be displayed for 3.5 seconds.
 
-Secondly, A map image showing the current location.
-    Zoom in/out with the top and bottom buttons
-    Both buttons pressed together will toggle between Road/ and Satellite view
-    If none of the buttons are pressed for 30 secs, the display moves on to show the prayer timetable
+Secondly, A map image showing the current location. A red path is drawn indicating the qibla direction for prayer.
+    Zoom in/out with the top and bottom buttons.
+    Both buttons pressed together will toggle between Road/ and Satellite view.
+    If none of the buttons are pressed for 30 secs, the display moves on to show the prayer timetable.
 
 Finally, The prayer timetable is shown along with the current date, time and battery status.
    If there is no button interaction for 30 seconds, the device switches off and enters Deep-Sleep mode.  
    Press and hold top button for 3 seconds to enable the WiFi config portal to reset WiFi credentials and/or to update the firmware over the air with a compiled .bin file.  Connect as instructed on screen.
 
-To Wake up the device press the bottom right-hand button.
+To Wake-up the device press the bottom right-hand button.
