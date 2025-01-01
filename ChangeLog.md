@@ -68,3 +68,13 @@ Auto-wakeup after 30 minutes.
 
 27 Dec 2024 - V7.10
 1. Incorporated Battery18650Stats library for accurate battery monitoring
+
+28 Dec 2024 - V8.00
+1. Display map of current location along with line marking direction of Qibla.  Remains on screen for 20 seconds 
+
+01 Jan 2025 - V9.00
+1. During Map view, use buttons to zoom in and out. 
+2. Both buttons pressed - Toggle map between Roadmap and Hybrid.
+3. If no buttons pressed for 20 seconds, exit map display routine
+
+Mecca Lat/Long - 21.4224779,39.8262775
