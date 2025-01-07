@@ -77,4 +77,7 @@ Auto-wakeup after 30 minutes.
 2. Both buttons pressed - Toggle map between Roadmap and Hybrid.
 3. If no buttons pressed for 20 seconds, exit map display routine
 
+07 Jan 2025 - V9.10
+1. Bypass Address and map display if bottom button is held during startup
+
 Mecca Lat/Long - 21.4224779,39.8262775
