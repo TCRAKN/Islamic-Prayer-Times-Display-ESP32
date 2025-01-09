@@ -195,13 +195,12 @@ String fetchJSON() {
         }
         tft.println("Prayer Data Received");
 
+        // Get location address from Google API
+        getAddress(loc.lat, loc.lon);
          // Bypass Address and map display if bottom button is held during startup
         int wakestate = HIGH;
         wakestate = digitalRead(WAKEUP_PIN);
         if (wakestate == HIGH) {
-          // Get location address from Google API
-          getAddress(loc.lat, loc.lon);
-
           fetchAndSaveMap(loc.lat, loc.lon);
           checkButtons();
         }
