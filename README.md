@@ -10,8 +10,8 @@ Follow my Instructable here:  https://www.instructables.com/Islamic-Prayer-Times
 
 The project uses JSON data from https://muwaqqit.com for prayer time data and Google for Geolocation.
 
-The project uses a readily-available ESP32 development board that includes a small TFT screen - TTGO T-Display,
-available from all the usual outlets.  The standard 'shell' available makes a glaringly obvious omission - space for a battery!
+The TTGO T-Display is available from all the usual outlets.  The standard 'shell' available makes a glaringly 
+obvious omission - space for a battery!
 There are a number of freely-available .stl files for this board that incorporates space for a lithium battery.
 https://www.printables.com/model/817468-ttgo-t-display-cases/files
 
@@ -50,9 +50,11 @@ Secondly, A map image showing the current location. A red path is drawn indicati
     Zoom in/out with the top and bottom buttons.
     Both buttons pressed together will toggle between Road/ and Satellite view.
     If none of the buttons are pressed for 30 secs, the display moves on to show the prayer timetable.
+    This function can be bypassed by pressing and holding the wake-up button until the prayer timetable is displayed.
 
 Finally, The prayer timetable is shown along with the current date, time and battery status.
    If there is no button interaction for 30 seconds, the device switches off and enters Deep-Sleep mode.  
-   Press and hold top button for 3 seconds to enable the WiFi config portal to reset WiFi credentials and/or to update the firmware over the air with a compiled .bin file.  Connect as instructed on screen.
+   Press and hold top button for 3 seconds to enable the WiFi config portal to reset WiFi credentials 
+   and/or to update the firmware over the air with a compiled .bin file.  Connect as instructed on screen.
 
 To Wake-up the device press the bottom right-hand button.
