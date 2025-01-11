@@ -802,8 +802,8 @@ void setup() {
   tft.fillScreen(TFT_BLACK);  // Clear screen
   tft.setTextColor(TFT_YELLOW, TFT_BLACK);
   tft.setCursor(0, 5);
-  tft.println("WiFi Connected V9.10");
-  Serial.println("WiFi Connected - V9.10");
+  tft.println("WiFi Connected V9.20");
+  Serial.println("WiFi Connected - V9.20");
 
   // Synchronize time with NTP server
   syncTime();
