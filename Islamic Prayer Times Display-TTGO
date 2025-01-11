@@ -288,7 +288,7 @@ String fetchJSON() {
             //Fajr TFT coordinates
             tft.setCursor(5, 12);
             // Check if timenow is between Fajr and Sunrise
-            if (timenowSeconds >= fajrSeconds && timenowSeconds <= sunriseSeconds) {
+            if (timenowSeconds >= fajrSeconds && timenowSeconds < sunriseSeconds) {
               tft.setTextColor(TFT_BLUE, TFT_YELLOW);  // Text and background colours
               tft.printf("Fajr     %s\n", fajr);
             } else {
@@ -304,7 +304,7 @@ String fetchJSON() {
             //Dhur TFT coordinates
             tft.setCursor(5, 48);
             // Check if timenow is between Dhur and Asr
-            if (timenowSeconds >= dhurSeconds && timenowSeconds <= asrSeconds) {
+            if (timenowSeconds >= dhurSeconds && timenowSeconds < asrSeconds) {
               tft.setTextColor(TFT_BLUE, TFT_YELLOW);  // Text and background colours
               tft.printf("Dhur     %s\n", dhur);
             } else {
@@ -315,7 +315,7 @@ String fetchJSON() {
             //Asr TFT coordinates
             tft.setCursor(5, 66);
             // Check if timenow is between Asr (Shafi'i) and 30 minutes before Maghrib
-            if (timenowSeconds >= asrSeconds && timenowSeconds <= (maghribSeconds - 1800)) {
+            if (timenowSeconds >= asrSeconds && timenowSeconds < (maghribSeconds - 1800)) {
               tft.setTextColor(TFT_BLUE, TFT_YELLOW);  // Text and background colours
               tft.printf("Asr S/M  %s\n", asr);
             } else {
@@ -326,7 +326,7 @@ String fetchJSON() {
             //Asr2 TFT coordinates
             tft.setCursor(5, 84);
             // Check if timenow is between Asr (Hanafi/Maliki) and Maghrib
-            if (timenowSeconds >= asr2Seconds && timenowSeconds <= maghribSeconds) {
+            if (timenowSeconds >= asr2Seconds && timenowSeconds < maghribSeconds) {
               tft.setTextColor(TFT_BLUE, TFT_YELLOW);  // Text and background colours
               tft.printf("Asr H    %s\n", asr2);
             } else {
@@ -337,7 +337,7 @@ String fetchJSON() {
             //Maghrib TFT coordinates
             tft.setCursor(5, 102);
             // Check if timenow is between Asr and Maghrib
-            if (timenowSeconds >= maghribSeconds && timenowSeconds <= ishaSeconds) {
+            if (timenowSeconds >= maghribSeconds && timenowSeconds < ishaSeconds) {
               tft.setTextColor(TFT_BLUE, TFT_YELLOW);  // Text and background colours
               tft.printf("Maghrib  %s\n", maghrib);
             } else {
@@ -348,7 +348,7 @@ String fetchJSON() {
             //Isha TFT coordinates
             tft.setCursor(5, 120);
             // Check if timenow is between Isha and Fajr
-            if (timenowSeconds >= ishaSeconds || timenowSeconds <= fajrSeconds) {
+            if (timenowSeconds >= ishaSeconds || timenowSeconds < fajrSeconds) {
               tft.setTextColor(TFT_BLUE, TFT_YELLOW);  // Text and background colours
               tft.printf("Isha -13 %s\n", isha);
             } else {
