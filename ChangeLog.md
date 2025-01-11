@@ -80,4 +80,7 @@ Auto-wakeup after 30 minutes.
 07 Jan 2025 - V9.10
 1. Bypass Address and map display if bottom button is held during startup
 
+11 Jan 2025 - V9.20
+1. Corrected comparison of time boundary-checks for highlighting current prayer time.
+
 Mecca Lat/Long - 21.4224779,39.8262775
