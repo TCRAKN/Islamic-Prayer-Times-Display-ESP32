@@ -18,12 +18,16 @@
 // Sketch Operation:
 //
 // Address screen - No interaction. Stays on screen for 3.5 seconds
-
+//
 // Map Image Screen
 //    Zoom in/out with top and bottom buttons
 //    Both buttons together changes map type (Road/Satellite)
 //    No buttons pressed for 30 secs, screen moves on to timetable
-
+//
+// Skip Map Image Screen
+//    Press & hold bottom button when on Address Screen to bypass the Map view.
+//    This will skip directly to the timetable screen.
+//
 // Timetable
 //   No button interaction after 30 seconds, device switches off.  Wake up with bottom button.
 //   Press and hold top button for 3 seconds - device goes into WiFi config and Firmware Update mode.
