@@ -1,4 +1,4 @@
-Muwaqqit for GitHub
+// Muwaqqit for GitHub
 
 // ESP32 code to get json data from www.muwaqqit.com, and parse into a current day prayer list
 // Many thanks to the developer at www.muwaqqit.com for making the API available.
