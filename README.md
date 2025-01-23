@@ -6,14 +6,14 @@ This is an Arduino IDE project that uses a readily-available development board t
 screen - LilyGo TTGO T-Display - to retrieve and display Islamic prayer time data according to the 
 geolocation of the user.
 
-Follow my Instructable here:  https://www.instructables.com/Islamic-Prayer-Times-ESP32-TTGO-T-Display/
+Follow my [Instructable here](https://www.instructables.com/Islamic-Prayer-Times-ESP32-TTGO-T-Display/)
 
 The project uses JSON data from https://muwaqqit.com for prayer time data and Google for Geolocation.
 
 The TTGO T-Display is available from all the usual outlets.  The standard 'shell' available makes a glaringly 
 obvious omission - space for a battery!
 There are a number of freely-available .stl files for this board that incorporates space for a lithium battery.
-https://www.printables.com/model/817468-ttgo-t-display-cases/files
+[TTGO T-Display Shell/Case](https://www.printables.com/model/817468-ttgo-t-display-cases/files)
 
 Arduino IDE Board - TTGO LoRa32.OLED or ESP32 Dev Module - Default settings
 
@@ -25,11 +25,11 @@ Uncomment line as below:
 
 Many thanks to the developer at www.muwaqqit.com for making the API available.
 Muwaqqit contact -  contact@muwaqqit.com
-Please consider supporting Muwaqqit - https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=contact@muwaqqit.com&currency_code=GBP
+Please consider [supporting Muwaqqit](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=contact@muwaqqit.com&currency_code=GBP).
 
 Benoit's ArduinoJson library is invaluable, and of course makes this project possible and with ease.
 The ArduinoJson Assistant takes out the headache of writing 'filter' code!
-Please also consider supporting Benoit - https://github.com/sponsors/bblanchon
+Please also consider [supporting Benoit](https://github.com/sponsors/bblanchon).
 
 A WiFi manager is incorporated, eliminating the need to hard-code one's WiFi credentials.
 If no connection or no SSID defined, the WiFi Configuration Portal is enabled.
