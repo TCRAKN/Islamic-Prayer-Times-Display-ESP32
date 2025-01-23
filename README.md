@@ -44,6 +44,11 @@ Some visual feedback is provided, indicating WiFi status, Time sync from NNTP se
 and of course, retrieval of Prayer times data.
 If any stage fails, the device will restart.
 
+Since July 2018, Google has updated the terms for their Maps APIs. You must link a billing method to the Google Cloud Console 
+to access it. For more details, visit: [Google Maps Platform Pricing](https://cloud.google.com/maps-platform/pricing/). Please be mindful of the number of requests you make. 
+While there is a free monthly allowance, it is subject to change at any time. I am not liable for any billing costs 
+incurred through the use of the Google API.
+
 Firstly, a rough address of the current location will be displayed for 3.5 seconds.
 
 Secondly, A map image showing the current location. A red path is drawn indicating the qibla direction for prayer.
