@@ -40,7 +40,7 @@
 #include <ArduinoJson.h>        // JSON parsing library V7.3.0
 #include <time.h>               // For NTP Time V1.6.1
 #include <TFT_eSPI.h>           // Include TFT_eSPI library V2.5.43
-#include <WifiLocation.h>       // Include WifiLocation to get Geolocation via Google V1.2.9
+#include <WifiLocation.h>       // Include WifiLocation to get Geolocation via Google V1.3.0
 #include <WiFiManager.h>        // Include the WiFiManager library V2.0.17
 #include <Battery18650Stats.h>  // Battery Stats library V1.0.0
 #include <TJpg_Decoder.h>       // Jpeg Decoder Library V1.1.0
