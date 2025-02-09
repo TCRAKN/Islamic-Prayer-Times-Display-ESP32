@@ -83,4 +83,7 @@ Auto-wakeup after 30 minutes.
 11 Jan 2025 - V9.20
 1. Corrected comparison of time boundary-checks for highlighting current prayer time.
 
+09 Feb 2025 - V9.21
+1. Added current time sync during display of prayer times. Mitigating incorrect highlighting of prayer time when close to transition.
+
 Mecca Lat/Long - 21.4224779,39.8262775
