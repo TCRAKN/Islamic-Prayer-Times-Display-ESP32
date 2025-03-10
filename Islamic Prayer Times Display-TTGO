@@ -37,7 +37,7 @@
 
 #include <WiFi.h>               // WiFi library for ESP32 V1.2.7
 #include <HTTPClient.h>         // HTTP client for API requests
-#include <ArduinoJson.h>        // JSON parsing library V7.3.0
+#include <ArduinoJson.h>        // JSON parsing library V7.3.1
 #include <time.h>               // For NTP Time V1.6.1
 #include <TFT_eSPI.h>           // Include TFT_eSPI library V2.5.43
 #include <WifiLocation.h>       // Include WifiLocation to get Geolocation via Google V1.3.0
