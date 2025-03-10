@@ -86,4 +86,7 @@ Auto-wakeup after 30 minutes.
 09 Feb 2025 - V9.21
 1. Added current time sync during display of prayer times. Mitigating incorrect highlighting of prayer time when close to transition.
 
+10 Mar 2025 - V9.22
+1. Corrected non-update of DST and UTC offset - Shown time was incorrect.  Removed "const" from initial definition of gmt_offset_sec & daylight_offset_sec
+
 Mecca Lat/Long - 21.4224779,39.8262775
