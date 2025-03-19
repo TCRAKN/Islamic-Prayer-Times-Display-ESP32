@@ -248,7 +248,7 @@ String fetchJSON() {
           if (resultdate == 0) {
             printLocalTime();
             Serial.println(displaydatetoday);
-            Serial.print("Fajr      - ");
+            Serial.print("Fajr -18° - ");
             Serial.println(fajr);
             Serial.print("Sunrise   - ");
             Serial.println(sunrise);
@@ -296,10 +296,18 @@ String fetchJSON() {
             // Check if timenow is between Fajr and Sunrise
             if (timenowSeconds >= fajrSeconds && timenowSeconds < sunriseSeconds) {
               tft.setTextColor(TFT_BLUE, TFT_YELLOW);  // Text and background colours
-              tft.printf("Fajr     %s\n", fajr);
+              tft.printf("Fajr -18 %s", fajr);
+              tft.setTextSize(1);
+              tft.setCursor(102, 8);
+              tft.printf("o");
+              tft.setTextSize(2);
             } else {
               tft.setTextColor(TFT_YELLOW, TFT_BLACK);  // Text and background colours
-              tft.printf("Fajr     %s\n", fajr);
+              tft.printf("Fajr -18 %s", fajr);
+              tft.setTextSize(1);
+              tft.setCursor(102, 8);
+              tft.printf("o");
+              tft.setTextSize(2);
             }
 
             //Sunrise TFT coordinates
@@ -356,10 +364,18 @@ String fetchJSON() {
             // Check if timenow is between Isha and Fajr
             if (timenowSeconds >= ishaSeconds || timenowSeconds < fajrSeconds) {
               tft.setTextColor(TFT_BLUE, TFT_YELLOW);  // Text and background colours
-              tft.printf("Isha -13 %s\n", isha);
+              tft.printf("Isha -13 %s", isha);
+              tft.setTextSize(1);
+              tft.setCursor(102, 116);
+              tft.printf("o");
+              tft.setTextSize(2);
             } else {
               tft.setTextColor(TFT_YELLOW, TFT_BLACK);  // Text and background colours
-              tft.printf("Isha -13 %s\n", isha);
+              tft.printf("Isha -13 %s", isha);
+              tft.setTextSize(1);
+              tft.setCursor(102, 116);
+              tft.printf("o");
+              tft.setTextSize(2);
             }
           }
           http.end();
