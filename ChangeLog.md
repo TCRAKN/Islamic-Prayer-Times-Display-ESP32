@@ -89,4 +89,7 @@ Auto-wakeup after 30 minutes.
 10 Mar 2025 - V9.22
 1. Corrected non-update of DST and UTC offset - Shown time was incorrect.  Removed "const" from initial definition of gmt_offset_sec & daylight_offset_sec
 
+19 Mar 2025 - V9.23
+1. Added '°' sign to TFT display of Fajr and Isha angles.
+
 Mecca Lat/Long - 21.4224779,39.8262775
